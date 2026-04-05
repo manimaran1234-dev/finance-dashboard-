@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Finance Dashboard</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, select { margin: 5px; padding: 5px; }
+        button { padding: 6px 10px; margin: 2px; }
+    </style>
+</head>
+<body>
+
+<h1>💰 Finance Dashboard</h1>
+
+<h3>Add / Update Record</h3>
+
+<input id="id" placeholder="ID (for update)">
+<input id="amount" placeholder="Amount">
+<select id="type">
+    <option>INCOME</option>
+    <option>EXPENSE</option>
+</select>
+<input id="category" placeholder="Category">
+
+<br>
+<button onclick="addRecord()">Add</button>
+<button onclick="updateRecord()">Update</button>
+
+<h3>Filter</h3>
+
+<input id="filterCategory" placeholder="Category">
+<select id="filterType">
+    <option value="">--Select Type--</option>
+    <option>INCOME</option>
+    <option>EXPENSE</option>
+</select>
+
+<br>
+<button onclick="filterRecords()">Filter</button>
+<button onclick="loadData()">Reset</button>
+
+<h3>Records</h3>
+<ul id="list"></ul>
+
+<h3>Dashboard Summary</h3>
+<p id="summary"></p>
+
+<h3>Category Wise</h3>
+<ul id="categoryList"></ul>
+
+<script>
+    const API = "http://localhost:8080";
+
+    function addRecord() {
+        fetch(API + "/records", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                amount: parseFloat(document.getElementById("amount").value),
+                type: document.getElementById("type").value,
+                category: document.getElementById("category").value
+            })
+        }).then(loadData);
+    }
+
+    function updateRecord() {
+        const id = document.getElementById("id").value;
+
+        fetch(API + "/records/" + id, {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                amount: parseFloat(document.getElementById("amount").value),
+                type: document.getElementById("type").value,
+                category: document.getElementById("category").value
+            })
+        }).then(loadData);
+    }
+
+    function filterRecords() {
+        const category = document.getElementById("filterCategory").value;
+        const type = document.getElementById("filterType").value;
+
+        let url = API + "/records/filter?";
+
+        if (category) url += "category=" + category;
+        if (type) url += "&type=" + type;
+
+        fetch(url)
+        .then(res => res.json())
+        .then(showRecords);
+    }
+
+    function loadData() {
+
+        fetch(API + "/records")
+        .then(res => res.json())
+        .then(showRecords);
+
+        fetch(API + "/dashboard")
+        .then(res => res.json())
+        .then(d => {
+            document.getElementById("summary").innerHTML =
+                `Income: ${d.income} | Expense: ${d.expense} | Balance: ${d.balance}`;
+        });
+
+        fetch(API + "/dashboard/category")
+        .then(res => res.json())
+        .then(data => {
+            let list = document.getElementById("categoryList");
+            list.innerHTML = "";
+
+            for (let key in data) {
+                list.innerHTML += `<li>${key} : ${data[key]}</li>`;
+            }
+        });
+    }
+
+    function showRecords(data) {
+        let list = document.getElementById("list");
+        list.innerHTML = "";
+
+        data.forEach(r => {
+            list.innerHTML += `
+                <li>
+                    ID:${r.id} | ${r.amount} - ${r.type} (${r.category})
+                    <button onclick="deleteRecord(${r.id})">❌</button>
+                </li>`;
+        });
+    }
+
+    function deleteRecord(id) {
+        fetch(API + "/records/" + id, {
+            method: "DELETE"
+        }).then(loadData);
+    }
+
+    // AUTO LOAD
+    loadData();
+</script>
+
+</body>
+</html>
